@@ -101,7 +101,7 @@ h1{font-family:Silkscreen,monospace;font-size:clamp(42px,6.6vw,92px);font-weight
  </div><div class="coordinates">20° 47′ N &nbsp; 156° 19′ W &nbsp; · &nbsp; HAWAIIAN ISLANDS</div></main>
 <div id="toast" role="status"></div>
 <footer class="bottom">
- <div class="hints"><span><b>MOUSE</b> steer</span><span><b>LMB</b> cannon</span><span><b>WHEEL</b> throttle</span><span><b>R</b> roll</span><span><b>I</b> Immelmann</span><span><b>SHIFT</b> boost</span><span><b>SPACE</b> view</span><span><b>RMB / F</b> missile</span><span><b>ESC</b> hold quits</span><span><b>PAD</b> xbox ready</span></div>
+ <div class="hints"><span><b>MOUSE</b> steer</span><span><b>LMB</b> cannon</span><span><b>WHEEL</b> throttle</span><span><b>S / D</b> roll L / R</span><span><b>I</b> Immelmann</span><span><b>SHIFT</b> boost</span><span><b>SPACE</b> view</span><span><b>RMB / F</b> missile</span><span><b>ESC</b> hold quits</span><span><b>PAD</b> xbox ready</span></div>
  <div class="ammo"><span id="flight-status">FREE FLIGHT</span> &nbsp; / &nbsp; MSL <em id="ammo">04</em></div>
 </footer>
 <div id="pad" aria-hidden="true">
@@ -681,7 +681,8 @@ window.addEventListener('keydown',e=>{
  if(e.repeat)return;input.keys.add(e.code);
  if(e.code==='Space'){launch();cycleView();}
  if(e.code==='KeyF')fireMissile();
- if(e.code==='KeyR')barrelRoll();
+ if(e.code==='KeyS')barrelRoll(-1);
+ if(e.code==='KeyD')barrelRoll(1);
  if(e.code==='KeyI'){launch();startImmelmann();}
  if(e.code==='Enter')launch();
  if(e.code==='KeyM')audio.toggle();
