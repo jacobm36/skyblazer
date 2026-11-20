@@ -44,7 +44,7 @@ h1{font-family:Silkscreen,monospace;font-size:clamp(42px,6.6vw,92px);font-weight
 #pad-actions{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:calc(var(--action-size)*2.5);height:calc(var(--action-size)*2.5);display:grid;grid-template-areas:". flip ." "roll . fire" ". missile .";grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr))}
 #pad-actions button{width:var(--action-size);height:var(--action-size);place-self:center;pointer-events:auto;touch-action:none;border-radius:50%;padding:0;font-size:8px;letter-spacing:1px;background:radial-gradient(circle at 35% 25%,#29434bd9,#122a35e6);border:1px solid #e8dfb54d;box-shadow:inset 0 0 0 3px #10263066,0 2px 6px #071c2533}
 #pad-actions button:active,#pad-actions #pad-fire:active{background:#f1d59d;color:#203e44;transform:none}
-#pad-roll{grid-area:roll}#pad-flip{grid-area:flip}#pad-missile{grid-area:missile}#pad-fire{grid-area:fire}
+#pad-boost{grid-area:roll}#pad-flip{grid-area:flip}#pad-missile{grid-area:missile}#pad-fire{grid-area:fire}
 #pad-actions #pad-fire{background:radial-gradient(circle at 35% 25%,#69503ad9,#302e25e6);border-color:#f6bc83a0}#pad-actions #pad-missile{border-color:#f6bc8366}
 #pad-view{position:absolute;top:max(62px,calc(env(safe-area-inset-top) + 54px));left:50%;transform:translateX(-50%);pointer-events:auto;touch-action:none;padding:7px 11px;font-size:8px;letter-spacing:1px;background:#162e3b96;border:1px solid #e8dfb540}
 #throttle{position:absolute;top:0;left:0;width:100%;aspect-ratio:200/112;pointer-events:none;touch-action:none}
@@ -124,7 +124,7 @@ h1{font-family:Silkscreen,monospace;font-size:clamp(42px,6.6vw,92px);font-weight
    <div id="throttle-label">THR 60%</div>
   </div>
   <div id="pad-actions">
-   <button id="pad-roll">ROLL</button><button id="pad-flip" aria-label="Immelmann reversal">FLIP</button>
+   <button id="pad-boost" aria-label="Afterburner boost">BOOST</button><button id="pad-flip" aria-label="Immelmann reversal">FLIP</button>
    <button id="pad-missile">MISSILE</button><button id="pad-fire">FIRE</button>
   </div>
  </div>
@@ -696,7 +696,7 @@ document.addEventListener('visibilitychange',()=>{last=0;releaseHeldInputs();});
 window.addEventListener('pagehide',releaseHeldInputs);
 function releaseHeldInputs(){
  input.left=input.right=input.touchBoost=input.touchGun=input.padGun=input.padBoost=false;
- input.keys.clear();pendingRoll=0;
+ input.keys.clear();
  if(stickPointer!==null){stickPointer=null;setStick(0,0);}
 }
 function touchButton(id,down,up){
@@ -707,22 +707,17 @@ touchButton('pad-view',cycleView);
 touchButton('pad-fire',()=>input.touchGun=true,()=>input.touchGun=false);
 touchButton('pad-missile',fireMissile);
 touchButton('pad-flip',startImmelmann);
-// ROLL reads the stick's horizontal deflection when pressed; if centered it waits for direction.
-let pendingRoll=0;
-touchButton('pad-roll',()=>{
- if(Math.abs(stick.x)>=.22)barrelRoll(Math.sign(stick.x));
- else{pendingRoll=time+2;toast('TILT STICK TO ROLL');}
-});
+// Afterburner: hold to boost, mirroring SHIFT on desktop. Rolls live on the stick (quick tap).
+touchButton('pad-boost',()=>input.touchBoost=true,()=>input.touchBoost=false);
 // Virtual joystick (mobile overlay): relative stick that drives the same cursor as the mouse.
 const stickBase=$('stick-base'),stickKnob=$('stick-knob');
 const stick={x:0,y:0};
-let stickPointer=null;
+let stickPointer=null,stickDownAt=0,stickDownX=0,stickDownY=0,stickDrag=0;
 function setStick(x,y){
  padSteering=false;
  stick.x=clamp(x,-1,1);stick.y=clamp(y,-1,1);
  input.x=stick.x;input.y=stick.y;input.moved=true;
  stickKnob.style.transform=`translate(${stick.x*34}px,${stick.y*34}px)`;
- if(pendingRoll>time&&Math.abs(stick.x)>=.22){pendingRoll=0;barrelRoll(Math.sign(stick.x));}
 }
 function moveStick(e){
  const r=stickBase.getBoundingClientRect();
@@ -730,10 +725,15 @@ function moveStick(e){
  const m=Math.hypot(x,y);if(m>1){x/=m;y/=m;}
  setStick(x,y);
 }
-stickBase.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();launch();audio.unlock();stickPointer=e.pointerId;stickBase.setPointerCapture(e.pointerId);moveStick(e);});
-stickBase.addEventListener('pointermove',e=>{if(e.pointerId===stickPointer)moveStick(e);});
-function stickRelease(e){if(e.pointerId!==stickPointer)return;stickPointer=null;setStick(0,0);}
-stickBase.addEventListener('pointerup',stickRelease);stickBase.addEventListener('pointercancel',stickRelease);
+stickBase.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();launch();audio.unlock();stickPointer=e.pointerId;stickDownAt=performance.now();stickDownX=e.clientX;stickDownY=e.clientY;stickDrag=0;stickBase.setPointerCapture(e.pointerId);moveStick(e);});
+stickBase.addEventListener('pointermove',e=>{if(e.pointerId===stickPointer){stickDrag=Math.max(stickDrag,Math.hypot(e.clientX-stickDownX,e.clientY-stickDownY));moveStick(e);}});
+function stickRelease(e,allowTap){
+ if(e.pointerId!==stickPointer)return;stickPointer=null;
+ // A quick tap on the stick barrel-rolls; tap left/right of centre to pick the direction.
+ if(allowTap&&performance.now()-stickDownAt<220&&stickDrag<14)barrelRoll(Math.abs(stick.x)>=.22?Math.sign(stick.x):1);
+ setStick(0,0);
+}
+stickBase.addEventListener('pointerup',e=>stickRelease(e,true));stickBase.addEventListener('pointercancel',e=>stickRelease(e,false));
 // The arc runs left to right from idle to afterburner and holds its setting on release.
 const throttleEl=$('throttle'),throttleKnob=$('throttle-knob'),throttleFill=$('throttle-fill'),throttleLabel=$('throttle-label');
 let throttlePointer=null;
@@ -2064,7 +2064,7 @@ window.skyblazer={
   wrecks:wrecks.map(w=>({type:w.type,position:[...w.pos],age:w.age})),
   enemyTypes:opponents.map(o=>o.type),
   audio:{sound:audio.on},
-  controls:{stick:{x:stick.x,y:stick.y},pendingRoll:pendingRoll>time,touchGun:input.touchGun},
+  controls:{stick:{x:stick.x,y:stick.y},touchBoost:input.touchBoost,touchGun:input.touchGun},
   shield:state.shield,protected:protectedFlight(),destroyed:state.destroyedUntil>time,deaths:state.deaths,combat:{...combat},
   targeting:{selected:opponents.indexOf(targeting.selected),visible:targeting.visible,range:targeting.range,closure:targeting.closure,lockProgress:targeting.lockProgress,locked:targeting.locked,stage:targeting.stage,leadDirection:targeting.leadDirection&&[...targeting.leadDirection]},
   radar:opponents.filter(o=>o.health>0).map(o=>radarContact(o)),
