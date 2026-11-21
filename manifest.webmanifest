@@ -1,0 +1,14 @@
+{
+ "name": "SKYBLAZER — Pacific flight club",
+ "short_name": "SKYBLAZER",
+ "description": "An endless Pacific. A sky full of bandits. Single-file WebGL2 arcade flight game.",
+ "start_url": ".",
+ "scope": ".",
+ "display": "fullscreen",
+ "background_color": "#142b36",
+ "theme_color": "#12272e",
+ "icons": [
+  {"src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+  {"src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+ ]
+}

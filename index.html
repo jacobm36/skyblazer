@@ -6,6 +6,11 @@
 <meta name="theme-color" content="#12272e">
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SKYBLAZER">
 <title>SKYBLAZER — Pacific flight club</title>
 <style>
 /* Embedded Google Fonts (latin subsets) so the game loads with zero external requests and works fully offline. */
@@ -16,9 +21,9 @@
 </style>
 <style>
 :root{color-scheme:dark;--cream:#fff0ca;--muted:#a9b8a8;--orange:#f4a773}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#142b36;color:var(--cream)}
+*{box-sizing:border-box;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#142b36;color:var(--cream)}
 @supports(height:100dvh){html,body{height:100dvh}}
-body{font-family:"Space Mono",monospace;font-size:11px;user-select:none;touch-action:none}
+body{font-family:"Space Mono",monospace;font-size:11px;touch-action:none}
 canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
 #instruments{pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges}
 .topbar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:27px 34px;pointer-events:none;text-shadow:1px 2px #172f39}
@@ -618,6 +623,10 @@ function cycleView(){
  toast(['NORTH UP · FOLLOW THE CURSOR','CHASE VIEW','COCKPIT · ALL SYSTEMS LIVE'][view]);
 }
 function launch(){
+ // First gesture on a touch device: go fullscreen where the platform allows it
+ // (Android Chrome; iOS Safari only offers fullscreen via Add to Home Screen).
+ if(mobile.matches&&!document.fullscreenElement&&document.documentElement.requestFullscreen)
+  document.documentElement.requestFullscreen({navigationUI:'hide'}).catch(()=>{});
  if(!ready||started)return;
  started=true;$('intro').style.opacity=0;setTimeout(()=>$('intro').style.display='none',700);audio.unlock();
  combat.nextWaveAt=time+1.5;state.invulnerableUntil=time+4;
@@ -627,6 +636,8 @@ $('launch').addEventListener('click',launch);
 $('sound').addEventListener('click',()=>audio.toggle());
 // Quit: closes the kiosk/app window. The button only appears in fullscreen display modes.
 function quitGame(){
+ // In API fullscreen (not an installed app) quitting means leaving fullscreen.
+ if(document.fullscreenElement){document.exitFullscreen().catch(()=>{});toast('FULLSCREEN OFF');return;}
  toast('LEAVING THE PACIFIC');
  setTimeout(()=>{window.close();setTimeout(()=>toast('CLOSE THE TAB TO EXIT'),400);},350);
 }
